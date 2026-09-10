@@ -45,10 +45,6 @@ nextBtn.onclick = () => setFilter(filterIndex + 1);
 function setStatus(text) { statusEl.textContent = text; console.log("[PortalFX]", text) }
 
 async function loadMediaPipe() {
-// 1. Declare the module variables at the top level
-let FilesetResolver, HandLandmarker;
-
-async function loadMediaPipe() {
   if (FilesetResolver && HandLandmarker) return;
 
   const src = BASE_URL + "js/vision_bundle.js"; 

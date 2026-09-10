@@ -163,20 +163,28 @@ function resize() {
   canvas.width = Math.max(1, Math.round(r.width * d));
   canvas.height = Math.max(1, Math.round(r.height * d));
   canvas.style.width = r.width + "px"; canvas.style.height = r.height + "px";
-  ctx.setTransform(d, 0, 0, d, 0, 0);
 }
 addEventListener("resize", resize);
 
 function loop() {
   if (!running) return;
   if (video.readyState >= 2) {
-    const w = stage.clientWidth, h = stage.clientHeight;
-    ctx.save();
+    const cw = canvas.width, ch = canvas.height;
+    const vw = video.videoWidth, vh = video.videoHeight;
+    const sx = cw / vw, sy = ch / vh;
+    const scale = Math.max(sx, sy);
+    const dw = vw * scale, dh = vh * scale;
+    const dx = (cw - dw) / 2, dy = (ch - dh) / 2;
+
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const sx = canvas.width / video.videoWidth, sy = canvas.height / video.videoHeight;
-    const scale = Math.max(sx, sy), dw = video.videoWidth * scale, dh = video.videoHeight * scale;
-    const dx = (canvas.width - dw) / 2, dy = (canvas.height - dh) / 2;
+    ctx.clearRect(0, 0, cw, ch);
+    
+    // Draw video (mirror if front camera)
+    ctx.save();
+    if (facingMode === "user") {
+      ctx.translate(cw, 0);
+      ctx.scale(-1, 1);
+    }
     ctx.drawImage(video, dx, dy, dw, dh);
     ctx.restore();
 
@@ -184,24 +192,32 @@ function loop() {
       lastVideoTime = video.currentTime;
       try {
         const result = landmarker.detectForVideo(video, performance.now());
-        renderPortal(result, w, h);
+        renderPortal(result, dx, dy, dw, dh, cw, ch);
       } catch (e) { console.warn("tracking frame:", e) }
     }
   }
   requestAnimationFrame(loop);
 }
 
-function renderPortal(result, w, h) {
+function renderPortal(result, dx, dy, dw, dh, cw, ch) {
   const hands = result.landmarks || [];
   handState.textContent = hands.length === 2 ? "Portal ready" : `${hands.length}/2 hands`;
   hint.style.opacity = hands.length === 2 ? ".15" : "1";
   if (hands.length < 2) return;
 
-  const P = hands.map(hand => ({ i: pt(hand[8], w, h), t: pt(hand[4], w, h) }));
+  // Transform normalized coordinates to exact physical canvas pixels
+  const pt = (p) => {
+    let nx = p.x;
+    // Flip tracking coordinates horizontally if video is mirrored
+    if (facingMode === "user") nx = 1 - nx;
+    return { x: dx + nx * dw, y: dy + p.y * dh };
+  };
+
+  const P = hands.map(hand => ({ i: pt(hand[8]), t: pt(hand[4]) }));
   const p1 = P[0].i, p2 = P[0].t, p3 = P[1].i, p4 = P[1].t;
   const c1 = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
   const c2 = { x: (p3.x + p4.x) / 2, y: (p3.y + p4.y) / 2 };
-  const gap = dist(c1, c2), threshold = Math.max(75, w * .18);
+  const gap = dist(c1, c2), threshold = Math.max(100, cw * .18);
 
   if (gap < threshold) {
     if (!closeLatch && performance.now() - lastSwitch > 800) {
@@ -210,37 +226,53 @@ function renderPortal(result, w, h) {
     closeLatch = true;
   } else if (gap > threshold * 1.35) closeLatch = false;
 
-  drawPortal(p1, p2, p3, p4, w, h);
+  drawPortal(p1, p2, p3, p4, cw, ch);
 }
 
-function drawPortal(p1, p2, p3, p4, w, h) {
-  const minX = Math.max(0, Math.floor(Math.min(p1.x, p2.x, p3.x, p4.x) - 20));
-  const maxX = Math.min(w, Math.ceil(Math.max(p1.x, p2.x, p3.x, p4.x) + 20));
-  const minY = Math.max(0, Math.floor(Math.min(p1.y, p2.y, p3.y, p4.y) - 20));
-  const maxY = Math.min(h, Math.ceil(Math.max(p1.y, p2.y, p3.y, p4.y) + 20));
+function drawPortal(p1, p2, p3, p4, cw, ch) {
+  const minX = Math.max(0, Math.floor(Math.min(p1.x, p2.x, p3.x, p4.x) - 40));
+  const maxX = Math.min(cw, Math.ceil(Math.max(p1.x, p2.x, p3.x, p4.x) + 40));
+  const minY = Math.max(0, Math.floor(Math.min(p1.y, p2.y, p3.y, p4.y) - 40));
+  const maxY = Math.min(ch, Math.ceil(Math.max(p1.y, p2.y, p3.y, p4.y) + 40));
   const bw = Math.max(1, maxX - minX), bh = Math.max(1, maxY - minY);
+  
+  if (bw <= 1 || bh <= 1) return;
+
   const image = ctx.getImageData(minX, minY, bw, bh);
   FILTERS[filterIndex][1](image, bw, bh);
+  
+  // putImageData ignores ctx.clip(), so we must use an offscreen canvas
+  const off = document.createElement("canvas");
+  off.width = bw; off.height = bh;
+  off.getContext("2d").putImageData(image, 0, 0);
 
   ctx.save();
   ctx.beginPath();
   ctx.moveTo(p1.x, p1.y); ctx.lineTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y); ctx.lineTo(p2.x, p2.y);
-  ctx.closePath(); ctx.clip();
-  ctx.putImageData(image, minX, minY);
+  ctx.closePath(); 
+  ctx.clip();
+  ctx.drawImage(off, minX, minY);
   ctx.restore();
 
+  const d = Math.min(devicePixelRatio || 1, 2);
   ctx.save();
   ctx.beginPath();
   ctx.moveTo(p1.x, p1.y); ctx.lineTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y); ctx.lineTo(p2.x, p2.y);
-  ctx.closePath(); ctx.strokeStyle = "rgba(255,255,255,.95)"; ctx.lineWidth = 2;
-  ctx.shadowBlur = 18; ctx.shadowColor = "rgba(255,255,255,.75)"; ctx.stroke();
-  [p1, p2, p3, p4].forEach(p => { ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2); ctx.fillStyle = "#fff"; ctx.fill() });
+  ctx.closePath(); 
+  ctx.strokeStyle = "rgba(255,255,255,.95)"; 
+  ctx.lineWidth = 3 * d;
+  ctx.shadowBlur = 18 * d; 
+  ctx.shadowColor = "rgba(255,255,255,.75)"; 
+  ctx.stroke();
+  
+  [p1, p2, p3, p4].forEach(p => { 
+    ctx.beginPath(); ctx.arc(p.x, p.y, 6 * d, 0, Math.PI * 2); ctx.fillStyle = "#fff"; ctx.fill() 
+  });
   ctx.restore();
 }
 
-function pt(p, w, h) { return { x: p.x * w, y: p.y * h } }
 function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y) }
-
+                 
 function original(img) { }
 function grid(img, w, h) {
   const d = img.data, step = 22;

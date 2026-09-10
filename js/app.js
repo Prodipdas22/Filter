@@ -1,5 +1,19 @@
 /* PortalFX mobile browser app. 
    Configured for full local hosting to bypass CDN and network restrictions. */
+// Add this at the top of app.js
+const getBasePath = () => {
+  let path = window.location.pathname;
+  // If there's no trailing slash, strip the last segment to find the true folder
+  if (!path.endsWith('/') && !path.endsWith('.html')) {
+    path += '/';
+  } else if (path.endsWith('.html')) {
+    path = path.substring(0, path.lastIndexOf('/') + 1);
+  }
+  return window.location.origin + path;
+};
+
+const BASE_URL = getBasePath();
+
 
 const $ = (s) => document.querySelector(s);
 const video = $("#video"), canvas = $("#output"), ctx = canvas.getContext("2d");
@@ -35,21 +49,23 @@ nextBtn.onclick = () => setFilter(filterIndex + 1);
 function setStatus(text) { statusEl.textContent = text; console.log("[PortalFX]", text) }
 
 async function loadMediaPipe() {
+async function loadMediaPipe() {
   if (window.FilesetResolver && window.HandLandmarker) return;
 
-  const src = "js/vision_bundle.js";
+  // Uses absolute dynamic pathing
+  const src = BASE_URL + "js/vision_bundle.js"; 
   
   try {
     await new Promise((resolve, reject) => {
       const script = document.createElement("script");
       script.src = src;
       script.onload = () => window.FilesetResolver ? resolve() : reject(new Error("Missing classes"));
-      script.onerror = () => reject(new Error("Failed to load local script"));
+      script.onerror = () => reject(new Error("Failed to load: " + src));
       document.head.appendChild(script);
     });
     console.log(`[PortalFX] Loaded MediaPipe locally`);
   } catch (e) {
-    throw new Error("Local vision_bundle.js not found. Ensure it is placed in the /js folder.");
+    throw new Error(`Failed to load ${src}. Ensure the file is pushed to GitHub.`);
   }
 }
 
@@ -61,11 +77,12 @@ async function createTracker() {
 
   setStatus("Loading AI model…");
   
-  const vision = await window.FilesetResolver.forVisionTasks("js/wasm");
+  // Update these paths to use BASE_URL as well
+  const vision = await window.FilesetResolver.forVisionTasks(BASE_URL + "js/wasm");
   
   landmarker = await window.HandLandmarker.createFromOptions(vision, {
     baseOptions: {
-      modelAssetPath: "models/hand_landmarker.task",
+      modelAssetPath: BASE_URL + "models/hand_landmarker.task",
       delegate: "GPU"
     },
     runningMode: "VIDEO",
@@ -75,6 +92,7 @@ async function createTracker() {
     minTrackingConfidence: .5
   });
 }
+
 
 async function startCamera() {
   if (loading) return;

@@ -1,9 +1,7 @@
-/* PortalFX mobile browser app. 
-   Configured for full local hosting to bypass CDN and network restrictions. */
-// Add this at the top of app.js
+/* PortalFX mobile browser app - Full Offline GitHub Pages Version */
+
 const getBasePath = () => {
   let path = window.location.pathname;
-  // If there's no trailing slash, strip the last segment to find the true folder
   if (!path.endsWith('/') && !path.endsWith('.html')) {
     path += '/';
   } else if (path.endsWith('.html')) {
@@ -11,9 +9,7 @@ const getBasePath = () => {
   }
   return window.location.origin + path;
 };
-
 const BASE_URL = getBasePath();
-
 
 const $ = (s) => document.querySelector(s);
 const video = $("#video"), canvas = $("#output"), ctx = canvas.getContext("2d");
@@ -49,10 +45,8 @@ nextBtn.onclick = () => setFilter(filterIndex + 1);
 function setStatus(text) { statusEl.textContent = text; console.log("[PortalFX]", text) }
 
 async function loadMediaPipe() {
-async function loadMediaPipe() {
   if (window.FilesetResolver && window.HandLandmarker) return;
 
-  // Uses absolute dynamic pathing
   const src = BASE_URL + "js/vision_bundle.js"; 
   
   try {
@@ -65,7 +59,7 @@ async function loadMediaPipe() {
     });
     console.log(`[PortalFX] Loaded MediaPipe locally`);
   } catch (e) {
-    throw new Error(`Failed to load ${src}. Ensure the file is pushed to GitHub.`);
+    throw new Error(`Local vision_bundle.js not found at ${src}. Ensure it is pushed to GitHub.`);
   }
 }
 
@@ -77,7 +71,6 @@ async function createTracker() {
 
   setStatus("Loading AI model…");
   
-  // Update these paths to use BASE_URL as well
   const vision = await window.FilesetResolver.forVisionTasks(BASE_URL + "js/wasm");
   
   landmarker = await window.HandLandmarker.createFromOptions(vision, {
@@ -93,7 +86,6 @@ async function createTracker() {
   });
 }
 
-
 async function startCamera() {
   if (loading) return;
   loading = true;
@@ -105,18 +97,14 @@ async function startCamera() {
       throw new Error("Camera API unavailable. Open this site using HTTPS in Chrome.");
     }
     if (!window.isSecureContext && location.hostname !== "localhost") {
-      throw new Error("Camera requires HTTPS. Use the GitHub Pages HTTPS address.");
+      throw new Error("Camera requires HTTPS.");
     }
 
     if (stream) stream.getTracks().forEach(t => t.stop());
 
     stream = await navigator.mediaDevices.getUserMedia({
       audio: false,
-      video: {
-        facingMode: { ideal: facingMode },
-        width: { ideal: 1280 },
-        height: { ideal: 720 }
-      }
+      video: { facingMode: { ideal: facingMode }, width: { ideal: 1280 }, height: { ideal: 720 } }
     });
 
     video.srcObject = stream;
@@ -127,31 +115,27 @@ async function startCamera() {
     running = true;
     setStatus("Camera live • loading hand tracking…");
 
-    // Correctly placed tracker initialization and error logging
     createTracker().then(() => {
       setStatus("Live • show both hands");
     }).catch(err => {
       console.error(err);
       setStatus("Camera live • hand tracker failed");
       handState.textContent = "Tracker unavailable";
-      hint.innerHTML = `<strong>Error Details:</strong><span style="color: #ff6b6b; font-size: 0.9em;">${err.message || err}</span>`;
+      hint.innerHTML = `<strong style="color:#ff6b6b">Tracker Error:</strong><span style="font-size: 0.9em; word-break: break-all;">${err.message || err}</span>`;
     });
 
     requestAnimationFrame(loop);
   } catch (err) {
-    // Restored the original camera error handler
     console.error(err);
     running = false;
     permission.style.display = "grid";
     setStatus("Could not start camera");
-    document.querySelector(".permission-card p").textContent = err.message ||
-      "Camera permission was denied. Allow camera access and try again.";
+    document.querySelector(".permission-card p").textContent = err.message || "Camera permission denied.";
   } finally {
     loading = false;
     startBtn.disabled = false;
   }
 }
-
 
 startBtn.addEventListener("click", startCamera);
 
@@ -211,9 +195,7 @@ function renderPortal(result, w, h) {
   hint.style.opacity = hands.length === 2 ? ".15" : "1";
   if (hands.length < 2) return;
 
-  const P = hands.map(hand => ({
-    i: pt(hand[8], w, h), t: pt(hand[4], w, h)
-  }));
+  const P = hands.map(hand => ({ i: pt(hand[8], w, h), t: pt(hand[4], w, h) }));
   const p1 = P[0].i, p2 = P[0].t, p3 = P[1].i, p4 = P[1].t;
   const c1 = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
   const c2 = { x: (p3.x + p4.x) / 2, y: (p3.y + p4.y) / 2 };
@@ -290,3 +272,4 @@ window.addEventListener("unhandledrejection", (e) => {
   console.error(e.reason);
   if (statusEl) statusEl.textContent = "Loading error — check console";
 });
+   

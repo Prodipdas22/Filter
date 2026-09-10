@@ -45,26 +45,24 @@ nextBtn.onclick = () => setFilter(filterIndex + 1);
 function setStatus(text) { statusEl.textContent = text; console.log("[PortalFX]", text) }
 
 async function loadMediaPipe() {
-  if (window.FilesetResolver && window.HandLandmarker) return;
+// 1. Declare the module variables at the top level
+let FilesetResolver, HandLandmarker;
+
+async function loadMediaPipe() {
+  if (FilesetResolver && HandLandmarker) return;
 
   const src = BASE_URL + "js/vision_bundle.js"; 
   
-  await new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = src;
-    script.onload = () => {
-      if (window.FilesetResolver) {
-        console.log(`[PortalFX] Loaded MediaPipe locally`);
-        resolve();
-      } else {
-        reject(new Error("Script loaded successfully, but FilesetResolver is missing. Wrong file version."));
-      }
-    };
-    script.onerror = () => reject(new Error("Browser network shield blocked the script injection."));
-    document.head.appendChild(script);
-  });
+  try {
+    // 2. Use dynamic import to read the local ES Module
+    const mod = await import(src);
+    FilesetResolver = mod.FilesetResolver;
+    HandLandmarker = mod.HandLandmarker;
+    console.log(`[PortalFX] Loaded MediaPipe locally via ES Module`);
+  } catch (e) {
+    throw new Error(`Failed to import module from ${src}. ${e.message}`);
+  }
 }
-
 
 async function createTracker() {
   if (landmarker) return;
@@ -74,9 +72,10 @@ async function createTracker() {
 
   setStatus("Loading AI model…");
   
-  const vision = await window.FilesetResolver.forVisionTasks(BASE_URL + "js/wasm");
+  // 3. Use the imported variables instead of window.FilesetResolver
+  const vision = await FilesetResolver.forVisionTasks(BASE_URL + "js/wasm");
   
-  landmarker = await window.HandLandmarker.createFromOptions(vision, {
+  landmarker = await HandLandmarker.createFromOptions(vision, {
     baseOptions: {
       modelAssetPath: BASE_URL + "models/hand_landmarker.task",
       delegate: "GPU"
@@ -88,6 +87,7 @@ async function createTracker() {
     minTrackingConfidence: .5
   });
 }
+
 
 async function startCamera() {
   if (loading) return;

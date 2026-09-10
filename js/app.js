@@ -1,5 +1,8 @@
 /* PortalFX mobile browser app - Full Offline GitHub Pages Version */
 
+// 1. Declare variables at the highest global scope so all functions can see them
+let FilesetResolver, HandLandmarker;
+
 const getBasePath = () => {
   let path = window.location.pathname;
   if (!path.endsWith('/') && !path.endsWith('.html')) {
@@ -50,13 +53,15 @@ async function loadMediaPipe() {
   const src = BASE_URL + "js/vision_bundle.js"; 
   
   try {
-    // 2. Use dynamic import to read the local ES Module
     const mod = await import(src);
-    FilesetResolver = mod.FilesetResolver;
-    HandLandmarker = mod.HandLandmarker;
+    // Handle both direct module exports and default object exports
+    FilesetResolver = mod.FilesetResolver || (mod.default && mod.default.FilesetResolver);
+    HandLandmarker = mod.HandLandmarker || (mod.default && mod.default.HandLandmarker);
+    
+    if (!FilesetResolver) throw new Error("Module loaded, but classes were missing.");
     console.log(`[PortalFX] Loaded MediaPipe locally via ES Module`);
   } catch (e) {
-    throw new Error(`Failed to import module from ${src}. ${e.message}`);
+    throw new Error(`Import failed: ${e.message}`);
   }
 }
 
@@ -68,7 +73,6 @@ async function createTracker() {
 
   setStatus("Loading AI model…");
   
-  // 3. Use the imported variables instead of window.FilesetResolver
   const vision = await FilesetResolver.forVisionTasks(BASE_URL + "js/wasm");
   
   landmarker = await HandLandmarker.createFromOptions(vision, {
@@ -83,7 +87,6 @@ async function createTracker() {
     minTrackingConfidence: .5
   });
 }
-
 
 async function startCamera() {
   if (loading) return;

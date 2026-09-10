@@ -37,7 +37,7 @@ function setStatus(text) { statusEl.textContent = text; console.log("[PortalFX]"
 async function loadMediaPipe() {
   if (window.FilesetResolver && window.HandLandmarker) return;
 
-  const src = "/js/vision_bundle.js"; 
+  const src = "js/vision_bundle.js";
   
   try {
     await new Promise((resolve, reject) => {

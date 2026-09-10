@@ -1,0 +1,9 @@
+{
+  "name":"PortalFX",
+  "short_name":"PortalFX",
+  "start_url":".",
+  "display":"standalone",
+  "background_color":"#07070a",
+  "theme_color":"#07070a",
+  "icons":[{"src":"assets/icon.svg","sizes":"any","type":"image/svg+xml"}]
+}

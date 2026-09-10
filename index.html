@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#07070a">
+  <meta name="description" content="Mobile browser hand portal filters">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="style.css">
+  <title>Portal Filters</title>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div>
+        <div class="brand">PORTAL<span>FX</span></div>
+        <div class="status" id="status">Ready</div>
+      </div>
+      <button class="icon-btn" id="cameraSwitch" title="Switch camera">↻</button>
+    </header>
+
+    <section class="stage" id="stage">
+      <video id="video" playsinline autoplay muted></video>
+      <canvas id="output"></canvas>
+      <div class="hint" id="hint">
+        <strong>Open the portal</strong>
+        <span>Show both hands with index fingers + thumbs extended</span>
+      </div>
+      <div class="permission" id="permission">
+        <div class="permission-card">
+          <div class="big-icon">✋</div>
+          <h2>Camera access</h2>
+          <p>Your camera is processed in your browser. Nothing is uploaded by this app.</p>
+          <button class="primary" id="startBtn">Start Camera</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="controls">
+      <div class="filter-info">
+        <div>
+          <small>FILTER</small>
+          <strong id="filterName">Original</strong>
+        </div>
+        <span id="handState">Waiting for hands</span>
+      </div>
+      <div class="filters" id="filters"></div>
+      <div class="actions">
+        <button class="action" id="prevBtn">‹</button>
+        <button class="capture" id="captureBtn"><span></span></button>
+        <button class="action" id="nextBtn">›</button>
+      </div>
+      <p class="tip">Bring your hands closer together to switch filters.</p>
+    </section>
+  </main>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

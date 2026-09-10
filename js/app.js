@@ -1,4 +1,16 @@
-import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/+esm";
+/* PortalFX mobile browser app.
+   Deliberately loaded as a normal script so UI buttons work even if the
+   MediaPipe CDN is slow/unavailable. MediaPipe is imported dynamically. */
+
+let FilesetResolver, HandLandmarker;
+const MEDIAPIPE_CDN="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/+esm";
+
+async function loadMediaPipe(){
+  if(HandLandmarker)return;
+  const mod=await import(MEDIAPIPE_CDN);
+  FilesetResolver=mod.FilesetResolver;
+  HandLandmarker=mod.HandLandmarker;
+}
 
 const $ = (s) => document.querySelector(s);
 const video=$("#video"), canvas=$("#output"), ctx=canvas.getContext("2d");
@@ -91,6 +103,8 @@ async function startCamera(){
 
 async function createTracker(){
   if(landmarker)return;
+  setStatus("Loading hand tracker…");
+  await loadMediaPipe();
   setStatus("Downloading hand tracker…");
   const vision=await FilesetResolver.forVisionTasks(
     "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm"
@@ -237,3 +251,11 @@ captureBtn.onclick=()=>{
   const a=document.createElement("a");a.download=`portal-fx-${Date.now()}.png`;a.href=canvas.toDataURL("image/png");a.click();
 };
 resize();
+window.addEventListener("error",(e)=>{
+  console.error(e.error||e.message);
+  if(statusEl) statusEl.textContent="App error — reload page";
+});
+window.addEventListener("unhandledrejection",(e)=>{
+  console.error(e.reason);
+  if(statusEl) statusEl.textContent="Loading error — check internet";
+});

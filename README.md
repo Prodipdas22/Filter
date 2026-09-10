@@ -58,3 +58,7 @@ This web edition is intended as a separate browser implementation inspired by th
 Make sure you are opening the **HTTPS GitHub Pages URL**, not a `file://` URL.
 In Chrome on Android, tap the lock icon → Permissions → Camera → Allow, then reload.
 The revised app starts the camera before downloading the hand-tracking model, so a slow model download no longer makes the Start button appear frozen.
+
+## Updated startup
+
+`app.js` is intentionally a classic script and dynamically imports MediaPipe only when the camera starts. This prevents a failed/slow CDN module import from disabling every button on the page.

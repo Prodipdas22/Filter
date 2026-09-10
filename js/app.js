@@ -49,19 +49,22 @@ async function loadMediaPipe() {
 
   const src = BASE_URL + "js/vision_bundle.js"; 
   
-  try {
-    await new Promise((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = src;
-      script.onload = () => window.FilesetResolver ? resolve() : reject(new Error("Missing classes"));
-      script.onerror = () => reject(new Error("Failed to load: " + src));
-      document.head.appendChild(script);
-    });
-    console.log(`[PortalFX] Loaded MediaPipe locally`);
-  } catch (e) {
-    throw new Error(`Local vision_bundle.js not found at ${src}. Ensure it is pushed to GitHub.`);
-  }
+  await new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = src;
+    script.onload = () => {
+      if (window.FilesetResolver) {
+        console.log(`[PortalFX] Loaded MediaPipe locally`);
+        resolve();
+      } else {
+        reject(new Error("Script loaded successfully, but FilesetResolver is missing. Wrong file version."));
+      }
+    };
+    script.onerror = () => reject(new Error("Browser network shield blocked the script injection."));
+    document.head.appendChild(script);
+  });
 }
+
 
 async function createTracker() {
   if (landmarker) return;

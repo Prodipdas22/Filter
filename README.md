@@ -52,3 +52,9 @@ For low-end phones:
 ## License
 
 This web edition is intended as a separate browser implementation inspired by the original MIT-licensed repository. Review the original repository's license before redistributing the original code/assets.
+
+## If Start Camera does nothing
+
+Make sure you are opening the **HTTPS GitHub Pages URL**, not a `file://` URL.
+In Chrome on Android, tap the lock icon → Permissions → Camera → Allow, then reload.
+The revised app starts the camera before downloading the hand-tracking model, so a slow model download no longer makes the Start button appear frozen.

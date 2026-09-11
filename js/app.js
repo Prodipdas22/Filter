@@ -1,6 +1,5 @@
 /* PortalFX mobile browser app - Full Offline GitHub Pages Version */
 
-// 1. Declare variables at the highest global scope so all functions can see them
 let FilesetResolver, HandLandmarker;
 
 const getBasePath = () => {
@@ -49,15 +48,11 @@ function setStatus(text) { statusEl.textContent = text; console.log("[PortalFX]"
 
 async function loadMediaPipe() {
   if (FilesetResolver && HandLandmarker) return;
-
   const src = BASE_URL + "js/vision_bundle.js"; 
-  
   try {
     const mod = await import(src);
-    // Handle both direct module exports and default object exports
     FilesetResolver = mod.FilesetResolver || (mod.default && mod.default.FilesetResolver);
     HandLandmarker = mod.HandLandmarker || (mod.default && mod.default.HandLandmarker);
-    
     if (!FilesetResolver) throw new Error("Module loaded, but classes were missing.");
     console.log(`[PortalFX] Loaded MediaPipe locally via ES Module`);
   } catch (e) {
@@ -67,14 +62,10 @@ async function loadMediaPipe() {
 
 async function createTracker() {
   if (landmarker) return;
-  
   setStatus("Loading hand tracker engine…");
   await loadMediaPipe();
-
   setStatus("Loading AI model…");
-  
   const vision = await FilesetResolver.forVisionTasks(BASE_URL + "js/wasm");
-  
   landmarker = await HandLandmarker.createFromOptions(vision, {
     baseOptions: {
       modelAssetPath: BASE_URL + "models/hand_landmarker.task",
@@ -87,7 +78,6 @@ async function createTracker() {
     minTrackingConfidence: .5
   });
 }
-
 
 async function startCamera() {
   if (loading) return;
@@ -111,10 +101,7 @@ async function startCamera() {
     });
 
     video.srcObject = stream;
-    
-    // MIRROR THE VIDEO PREVIEW FOR SELFIES
     video.style.transform = facingMode === "user" ? "scaleX(-1)" : "none";
-    
     await video.play();
 
     permission.style.display = "none";
@@ -144,12 +131,11 @@ async function startCamera() {
   }
 }
 
+startBtn.addEventListener("click", startCamera);
+
 cameraSwitch.addEventListener("click", async () => {
   if (!stream) return;
-  
-  // Toggle the camera mode
   facingMode = facingMode === "user" ? "environment" : "user";
-  
   try {
     const old = stream;
     stream = await navigator.mediaDevices.getUserMedia({
@@ -157,12 +143,8 @@ cameraSwitch.addEventListener("click", async () => {
       video: { facingMode: { ideal: facingMode }, width: { ideal: 1280 }, height: { ideal: 720 } }
     });
     old.getTracks().forEach(t => t.stop());
-    
     video.srcObject = stream;
-    
-    // MIRROR THE VIDEO PREVIEW FOR SELFIES
     video.style.transform = facingMode === "user" ? "scaleX(-1)" : "none";
-    
     await video.play();
     setStatus("Camera switched");
   } catch (e) {
@@ -170,7 +152,6 @@ cameraSwitch.addEventListener("click", async () => {
     setStatus("Could not switch camera");
   }
 });
-
 
 function resize() {
   const r = stage.getBoundingClientRect(), d = Math.min(devicePixelRatio || 1, 2);
@@ -193,7 +174,6 @@ function loop() {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, cw, ch);
     
-    // Draw video (mirror if front camera)
     ctx.save();
     if (facingMode === "user") {
       ctx.translate(cw, 0);
@@ -219,10 +199,8 @@ function renderPortal(result, dx, dy, dw, dh, cw, ch) {
   hint.style.opacity = hands.length === 2 ? ".15" : "1";
   if (hands.length < 2) return;
 
-  // Transform normalized coordinates to exact physical canvas pixels
   const pt = (p) => {
     let nx = p.x;
-    // Flip tracking coordinates horizontally if video is mirrored
     if (facingMode === "user") nx = 1 - nx;
     return { x: dx + nx * dw, y: dy + p.y * dh };
   };
@@ -255,7 +233,6 @@ function drawPortal(p1, p2, p3, p4, cw, ch) {
   const image = ctx.getImageData(minX, minY, bw, bh);
   FILTERS[filterIndex][1](image, bw, bh);
   
-  // putImageData ignores ctx.clip(), so we must use an offscreen canvas
   const off = document.createElement("canvas");
   off.width = bw; off.height = bh;
   off.getContext("2d").putImageData(image, 0, 0);
@@ -286,7 +263,7 @@ function drawPortal(p1, p2, p3, p4, cw, ch) {
 }
 
 function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y) }
-                 
+
 function original(img) { }
 function grid(img, w, h) {
   const d = img.data, step = 22;
@@ -320,4 +297,3 @@ window.addEventListener("unhandledrejection", (e) => {
   console.error(e.reason);
   if (statusEl) statusEl.textContent = "Loading error — check console";
 });
-   

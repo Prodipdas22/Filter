@@ -209,7 +209,7 @@ function renderPortal(result, dx, dy, dw, dh, cw, ch) {
   const pt = (p) => {
     let nx = p.x;
     // Flip tracking coordinates horizontally if video is mirrored
-    //if (facingMode === "user") nx = 1 - nx;
+    if (facingMode === "user") nx = 1 - nx;
     return { x: dx + nx * dw, y: dy + p.y * dh };
   };
 

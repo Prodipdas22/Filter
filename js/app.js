@@ -88,6 +88,7 @@ async function createTracker() {
   });
 }
 
+
 async function startCamera() {
   if (loading) return;
   loading = true;
@@ -110,6 +111,10 @@ async function startCamera() {
     });
 
     video.srcObject = stream;
+    
+    // MIRROR THE VIDEO PREVIEW FOR SELFIES
+    video.style.transform = facingMode === "user" ? "scaleX(-1)" : "none";
+    
     await video.play();
 
     permission.style.display = "none";
@@ -139,24 +144,33 @@ async function startCamera() {
   }
 }
 
-startBtn.addEventListener("click", startCamera);
-
 cameraSwitch.addEventListener("click", async () => {
   if (!stream) return;
+  
+  // Toggle the camera mode
   facingMode = facingMode === "user" ? "environment" : "user";
+  
   try {
     const old = stream;
     stream = await navigator.mediaDevices.getUserMedia({
-      audio: false, video: { facingMode: { ideal: facingMode }, width: { ideal: 1280 }, height: { ideal: 720 } }
+      audio: false, 
+      video: { facingMode: { ideal: facingMode }, width: { ideal: 1280 }, height: { ideal: 720 } }
     });
     old.getTracks().forEach(t => t.stop());
+    
     video.srcObject = stream;
+    
+    // MIRROR THE VIDEO PREVIEW FOR SELFIES
+    video.style.transform = facingMode === "user" ? "scaleX(-1)" : "none";
+    
     await video.play();
     setStatus("Camera switched");
   } catch (e) {
-    console.error(e); setStatus("Could not switch camera");
+    console.error(e); 
+    setStatus("Could not switch camera");
   }
 });
+
 
 function resize() {
   const r = stage.getBoundingClientRect(), d = Math.min(devicePixelRatio || 1, 2);

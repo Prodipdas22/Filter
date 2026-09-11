@@ -86,12 +86,8 @@ async function startCamera() {
   setStatus("Starting camera…");
 
   try {
-    if (!navigator.mediaDevices?.getUserMedia) {
-      throw new Error("Camera API unavailable. Open this site using HTTPS in Chrome.");
-    }
-    if (!window.isSecureContext && location.hostname !== "localhost") {
-      throw new Error("Camera requires HTTPS.");
-    }
+    if (!navigator.mediaDevices?.getUserMedia) throw new Error("Camera API unavailable. Use HTTPS.");
+    if (!window.isSecureContext && location.hostname !== "localhost") throw new Error("Camera requires HTTPS.");
 
     if (stream) stream.getTracks().forEach(t => t.stop());
 
@@ -101,35 +97,33 @@ async function startCamera() {
     });
 
     video.srcObject = stream;
-    video.style.transform = facingMode === "user" ? "scaleX(-1)" : "none";
+    
+    // FLIP BOTH VIDEO AND CANVAS FOR SELFIES
+    const flip = facingMode === "user" ? "scaleX(-1)" : "none";
+    video.style.transform = flip;
+    canvas.style.transform = flip;
+    
     await video.play();
-
     permission.style.display = "none";
     resize();
     running = true;
     setStatus("Camera live • loading hand tracking…");
 
-    createTracker().then(() => {
-      setStatus("Live • show both hands");
-    }).catch(err => {
+    createTracker().then(() => setStatus("Live • show both hands")).catch(err => {
       console.error(err);
       setStatus("Camera live • hand tracker failed");
       handState.textContent = "Tracker unavailable";
-      hint.innerHTML = `<strong style="color:#ff6b6b">Tracker Error:</strong><span style="font-size: 0.9em; word-break: break-all;">${err.message || err}</span>`;
+      hint.innerHTML = `<strong style="color:#ff6b6b">Tracker Error:</strong><span style="font-size: 0.9em;">${err.message || err}</span>`;
     });
-
     requestAnimationFrame(loop);
   } catch (err) {
-    console.error(err);
-    running = false;
-    permission.style.display = "grid";
-    setStatus("Could not start camera");
+    running = false; permission.style.display = "grid"; setStatus("Could not start camera");
     document.querySelector(".permission-card p").textContent = err.message || "Camera permission denied.";
   } finally {
-    loading = false;
-    startBtn.disabled = false;
+    loading = false; startBtn.disabled = false;
   }
 }
+
 
 startBtn.addEventListener("click", startCamera);
 
@@ -139,19 +133,23 @@ cameraSwitch.addEventListener("click", async () => {
   try {
     const old = stream;
     stream = await navigator.mediaDevices.getUserMedia({
-      audio: false, 
-      video: { facingMode: { ideal: facingMode }, width: { ideal: 1280 }, height: { ideal: 720 } }
+      audio: false, video: { facingMode: { ideal: facingMode }, width: { ideal: 1280 }, height: { ideal: 720 } }
     });
     old.getTracks().forEach(t => t.stop());
     video.srcObject = stream;
-    video.style.transform = facingMode === "user" ? "scaleX(-1)" : "none";
+    
+    // APPLY CSS FLIP ON SWITCH
+    const flip = facingMode === "user" ? "scaleX(-1)" : "none";
+    video.style.transform = flip;
+    canvas.style.transform = flip;
+    
     await video.play();
     setStatus("Camera switched");
   } catch (e) {
-    console.error(e); 
-    setStatus("Could not switch camera");
+    console.error(e); setStatus("Could not switch camera");
   }
 });
+
 
 function resize() {
   const r = stage.getBoundingClientRect(), d = Math.min(devicePixelRatio || 1, 2);
@@ -174,13 +172,8 @@ function loop() {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, cw, ch);
     
-    ctx.save();
-    if (facingMode === "user") {
-      ctx.translate(cw, 0);
-      ctx.scale(-1, 1);
-    }
+    // Draw the raw, un-flipped video (CSS handles the mirroring visually)
     ctx.drawImage(video, dx, dy, dw, dh);
-    ctx.restore();
 
     if (landmarker && video.currentTime !== lastVideoTime) {
       lastVideoTime = video.currentTime;
@@ -199,11 +192,25 @@ function renderPortal(result, dx, dy, dw, dh, cw, ch) {
   hint.style.opacity = hands.length === 2 ? ".15" : "1";
   if (hands.length < 2) return;
 
-  const pt = (p) => {
-    let nx = p.x;
-    if (facingMode === "user") nx = 1 - nx;
-    return { x: dx + nx * dw, y: dy + p.y * dh };
-  };
+  // Use direct coordinates without manually flipping them
+  const pt = (p) => ({ x: dx + p.x * dw, y: dy + p.y * dh });
+
+  const P = hands.map(hand => ({ i: pt(hand[8]), t: pt(hand[4]) }));
+  const p1 = P[0].i, p2 = P[0].t, p3 = P[1].i, p4 = P[1].t;
+  const c1 = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+  const c2 = { x: (p3.x + p4.x) / 2, y: (p3.y + p4.y) / 2 };
+  const gap = dist(c1, c2), threshold = Math.max(100, cw * .18);
+
+  if (gap < threshold) {
+    if (!closeLatch && performance.now() - lastSwitch > 800) {
+      setFilter(filterIndex + 1); lastSwitch = performance.now();
+    }
+    closeLatch = true;
+  } else if (gap > threshold * 1.35) closeLatch = false;
+
+  drawPortal(p1, p2, p3, p4, cw, ch);
+}
+
 
   const P = hands.map(hand => ({ i: pt(hand[8]), t: pt(hand[4]) }));
   const p1 = P[0].i, p2 = P[0].t, p3 = P[1].i, p4 = P[1].t;

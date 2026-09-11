@@ -124,7 +124,6 @@ async function startCamera() {
   }
 }
 
-
 startBtn.addEventListener("click", startCamera);
 
 cameraSwitch.addEventListener("click", async () => {
@@ -149,7 +148,6 @@ cameraSwitch.addEventListener("click", async () => {
     console.error(e); setStatus("Could not switch camera");
   }
 });
-
 
 function resize() {
   const r = stage.getBoundingClientRect(), d = Math.min(devicePixelRatio || 1, 2);
@@ -194,23 +192,6 @@ function renderPortal(result, dx, dy, dw, dh, cw, ch) {
 
   // Use direct coordinates without manually flipping them
   const pt = (p) => ({ x: dx + p.x * dw, y: dy + p.y * dh });
-
-  const P = hands.map(hand => ({ i: pt(hand[8]), t: pt(hand[4]) }));
-  const p1 = P[0].i, p2 = P[0].t, p3 = P[1].i, p4 = P[1].t;
-  const c1 = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
-  const c2 = { x: (p3.x + p4.x) / 2, y: (p3.y + p4.y) / 2 };
-  const gap = dist(c1, c2), threshold = Math.max(100, cw * .18);
-
-  if (gap < threshold) {
-    if (!closeLatch && performance.now() - lastSwitch > 800) {
-      setFilter(filterIndex + 1); lastSwitch = performance.now();
-    }
-    closeLatch = true;
-  } else if (gap > threshold * 1.35) closeLatch = false;
-
-  drawPortal(p1, p2, p3, p4, cw, ch);
-}
-
 
   const P = hands.map(hand => ({ i: pt(hand[8]), t: pt(hand[4]) }));
   const p1 = P[0].i, p2 = P[0].t, p3 = P[1].i, p4 = P[1].t;
